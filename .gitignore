@@ -1,0 +1,29 @@
+# Виртуальное окружение
+venv/
+.venv/
+env/
+
+# Python кэш
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Pytest кэш
+.pytest_cache/
+
+# Allure результаты (сырые данные)
+allure-results/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
