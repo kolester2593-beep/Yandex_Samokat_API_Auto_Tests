@@ -29,6 +29,9 @@ from .api_responses import (
     ERROR_NOT_FOUND
 )
 
+# Хэлперы
+from .helpers import generate_random_string, generate_random_phone
+
 # Делаем доступным при импорте из utils
 __all__ = [
     # Конфигурация
@@ -47,7 +50,11 @@ __all__ = [
     
     # Генератор данных
     'register_new_courier_and_return_login_password',
-    
+
+    # Хэлперы
+    'generate_random_string',
+    'generate_random_phone',
+
     # Константы ответов API 
     'STATUS_CREATED',
     'STATUS_OK',
@@ -58,3 +65,4 @@ __all__ = [
     'ERROR_LOGIN_EXISTS',
     'ERROR_NOT_FOUND'
 ]
+

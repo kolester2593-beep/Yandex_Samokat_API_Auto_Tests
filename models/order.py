@@ -1,6 +1,6 @@
 import random
 import string
-
+from utils import generate_random_string, generate_random_phone
 
 class Order:
 
@@ -54,13 +54,7 @@ class Order:
 
     # Метод генерация случайных данных
     def generate(self, color=None):
-        def generate_random_string(length=10):
-            letters = string.ascii_lowercase
-            return ''.join(random.choice(letters) for _ in range(length))
-        
-        def generate_random_phone():
-            return "+7" + str(random.randint(1000000000, 9999999999))
-        
+
         # Заполняем обязательные поля
         self.first_name = generate_random_string(10)
         self.last_name = generate_random_string(10)

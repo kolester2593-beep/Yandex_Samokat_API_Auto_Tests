@@ -1,8 +1,6 @@
 import pytest
 import sys
 import os
-import random
-import string
 
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 if ROOT_DIR not in sys.path:
@@ -10,15 +8,9 @@ if ROOT_DIR not in sys.path:
 
 from api import CourierClient, OrderClient
 from models import Courier, Order
+from utils import generate_random_string, generate_random_phone
 
 
-def generate_random_string(length=10):
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for _ in range(length))
-
-
-def generate_random_phone():
-    return "+7" + str(random.randint(1000000000, 9999999999))
 
 
 @pytest.fixture
