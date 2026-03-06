@@ -3,35 +3,28 @@ import allure
 from utils import STATUS_CREATED, STATUS_OK, STATUS_BAD_REQUEST, STATUS_CONFLICT, STATUS_NOT_FOUND
 import requests
 from utils import BASE_URL, COURIER_CREATE,COURIER_DELETE, COURIER_LOGIN, HEADERS, TIMEOUT
-from api import CourierClient
 from models import Courier
 
 
 @allure.feature("Courier")
 class TestCourierCreate:
 
-    @allure.story("Create courier")
+    @allure.story("Создание курьера: все данные")
     @allure.title("Успешное создание курьера")
-    def test_create_courier_success(self, courier_client):
-        courier = Courier()
-        courier.generate()
-        response = courier_client.create(  
-            courier.login,
-            courier.password,
-            courier.first_name
-        )
-        assert response.status_code == STATUS_CREATED
-        assert response.json()["ok"] is True       
+    def test_create_courier_success(self, created_courier):
+        create_response = created_courier['create_response']
+        assert create_response.status_code == STATUS_CREATED
+        assert create_response.json()["ok"] is True      
 
 
-    @allure.story("Create courier")
+    @allure.story("Создание курьера: отсутствует логин")
     @allure.title("Создание без логина")
-    def test_create_courier_without_login(self):
-        courier = Courier()
-        courier.generate()
+    def test_create_courier_without_login(self, courier_for_validation):
+        password = courier_for_validation['password']
+        first_name = courier_for_validation['first_name']
         payload = {
-    "password": courier.password,
-    "firstName": courier.first_name
+            "password": password,
+            "firstName": first_name
         }
         response = requests.post(
             f'{BASE_URL}{COURIER_CREATE}',
@@ -43,14 +36,15 @@ class TestCourierCreate:
         assert "message" in response.json()  
 
 
-    @allure.story("Create courier")
+    @allure.story("Создание курьера: отсутствует пароль")
     @allure.title("Создание без пароля")
-    def test_create_courier_without_password(self):
-        courier = Courier()
-        courier.generate()
+    def test_create_courier_without_password(self, courier_for_validation):
+        login = courier_for_validation['login']
+        first_name = courier_for_validation['first_name']
+        
         payload = {
-    "login": courier.login,
-    "firstName": courier.first_name
+            "login": login,
+            "firstName": first_name
         }
         response = requests.post(
             f'{BASE_URL}{COURIER_CREATE}',
@@ -62,14 +56,15 @@ class TestCourierCreate:
         assert "message" in response.json()
 
 
-    @allure.story("Create courier")
+    @allure.story("Создание курьера: отсутствует имя")
     @allure.title("Создание без имени")
-    def test_create_courier_without_first_name(self):
-        courier = Courier()
-        courier.generate()
+    def test_create_courier_without_first_name(self, courier_for_validation):
+        login = courier_for_validation['login']
+        password = courier_for_validation['password']
+        
         payload = {
-    "login": courier.login,
-    "password": courier.password
+            "login": login,
+            "password": password
         }
         response = requests.post(
             f'{BASE_URL}{COURIER_CREATE}',
@@ -77,7 +72,6 @@ class TestCourierCreate:
             headers=HEADERS,
             timeout=TIMEOUT
         )
-        # Ожидаем 201, так как поле необязательное
         assert response.status_code == STATUS_CREATED
         assert response.json()["ok"] is True
 
@@ -100,9 +94,11 @@ class TestCourierLogin:
 
     @allure.story("Login courier")
     @allure.title("Успешный вход")
-    def test_login_success(self, authorized_courier):
-        courier_client = CourierClient()
-        response = courier_client.login(authorized_courier['login'], authorized_courier['password'])
+    def test_login_success(self, courier_client, authorized_courier):
+        response = courier_client.login(
+            authorized_courier['login'],
+            authorized_courier['password']
+        )
         assert response.status_code == STATUS_OK
         assert "id" in response.json()
         assert isinstance(response.json()["id"], int)  
@@ -143,11 +139,15 @@ class TestCourierLogin:
     @allure.story("Login courier")
     @allure.title("Неверный пароль")
     def test_login_wrong_password(self, new_courier):
-        URL = f'{BASE_URL}{COURIER_LOGIN}'
         login = new_courier['login']
         wrong_password = "wrong_password_123"
-        payload = {"login": login, "password": wrong_password} 
-        response = requests.post(URL, json=payload, headers=HEADERS, timeout=TIMEOUT)
+        payload = {"login": login, "password": wrong_password}
+        response = requests.post(
+            f'{BASE_URL}{COURIER_LOGIN}',
+            json=payload,
+            headers=HEADERS,
+            timeout=TIMEOUT
+        )
         assert response.status_code == STATUS_NOT_FOUND
         assert "message" in response.json()
 
@@ -198,8 +198,8 @@ class TestCourierDelete:
         assert "message" in response.json()
 
 
-    @allure.story("Delete courier")
     @allure.title("После удаления курьер не может авторизоваться")
+    @allure.story("Удаление курьера: Проверка удаления через логин")
     def test_courier_cannot_login_after_delete(self, courier_client, new_courier):
         login = new_courier['login']
         password = new_courier['password']

@@ -9,7 +9,7 @@ if ROOT_DIR not in sys.path:
 from api import CourierClient, OrderClient
 from models import Courier, Order
 from utils import generate_random_string, generate_random_phone
-
+from utils import STATUS_OK, STATUS_NOT_FOUND
 
 
 
@@ -37,9 +37,11 @@ def new_courier(): # Фикстура создаёт нового курьера
     
     # удаляем курьера
     try:
-        courier_client.delete(courier_id)
-    except:
-        pass  
+        delete_response = courier_client.delete(courier_id)
+        if delete_response.status_code not in [STATUS_OK, STATUS_NOT_FOUND]:
+            raise Exception(f"Failed to delete courier: {delete_response.status_code}")
+    except Exception as e:
+        pass 
 
 
 @pytest.fixture
@@ -142,3 +144,59 @@ def order_with_courier(): # Фикстура создаёт курьера и з
 @pytest.fixture
 def order_client():
     yield OrderClient()
+
+# Фикстура создаёт курьера перед тестом и удаляет после.
+@pytest.fixture
+def created_courier(courier_client):
+    courier = Courier()
+    courier.generate()
+    
+    create_response = courier_client.create(
+        courier.login,
+        courier.password,
+        courier.first_name
+    )
+    
+    # Возвращаем данные курьера и ответ на создание
+    yield {
+        'login': courier.login,
+        'password': courier.password,
+        'first_name': courier.first_name,
+        'create_response': create_response
+    }
+    
+    # Teardown: удаляем курьера
+    login_response = courier_client.login(courier.login, courier.password)
+    courier_id = login_response.json()["id"]
+    
+    try:
+        courier_client.delete(courier_id)
+    except:
+        pass
+
+
+#
+@pytest.fixture 
+def courier_for_validation(courier_client):
+    # Генерируем данные (но не создаём в API)
+    courier = Courier()
+    courier.generate()
+    
+    login = courier.login
+    password = courier.password
+    first_name = courier.first_name
+    
+    # Отдаём данные тесту
+    yield {
+        'login': login,
+        'password': password,
+        'first_name': first_name
+    }
+    
+    # Teardown: удаляем курьера (тест уже создал его)
+    try:
+        login_response = courier_client.login(login, password)
+        courier_id = login_response.json()["id"]
+        courier_client.delete(courier_id)
+    except:
+        pass  # Курьер мог не создаться (ошибка валидации)
