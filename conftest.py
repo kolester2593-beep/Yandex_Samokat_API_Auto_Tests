@@ -2,63 +2,30 @@ import pytest
 import sys
 import os
 
-# НАСТРОЙКА ПУТЕЙ
 
+# НАСТРОЙКА ПУТЕЙ
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-# ИМПОРТЫ
 
+# ИМПОРТЫ
 from api import CourierClient, OrderClient
 from models import Courier, Order
 from utils import STATUS_OK, STATUS_NOT_FOUND
 
 
 # ФИКСТУРЫ ДЛЯ КУРЬЕРОВ
-
-# Возвращает экземпляр CourierClient.
-# Используется в тестах, где нужно самостоятельно управлять запросами.
 @pytest.fixture
-def courier_client():
+def courier_client(): # Возвращает экземпляр CourierClient.
     yield CourierClient()
 
 
-# Фикстура создаёт курьера перед тестом и удаляет после.
-# Возвращает данные курьера и ответ на создание.
-# Используется в тестах на успешное создание курьера.
+# Фикстура для тестов на СОЗДАНИЕ курьера.
+# Генерирует данные, тест создаёт курьера, фикстура удаляет в teardown.
+# НЕ создаёт курьера до теста! Иначе тест не проверяет создание.
 @pytest.fixture
-def created_courier(courier_client):
-    courier = Courier()
-    courier.generate()
-    
-    create_response = courier_client.create(
-        courier.login,
-        courier.password,
-        courier.first_name
-    )
-    
-    yield {
-        'login': courier.login,
-        'password': courier.password,
-        'first_name': courier.first_name,
-        'create_response': create_response
-    }
-    
-    # Удаляем курьера
-    try:
-        login_response = courier_client.login(courier.login, courier.password)
-        courier_id = login_response.json()["id"]
-        courier_client.delete(courier_id)
-    except:
-        pass
-
-
-# Фикстура для тестов на валидацию полей.
-# Генерирует данные курьера, тест создаёт его в API,
-@pytest.fixture
-def courier_for_validation(courier_client):
-
+def courier_data(courier_client):
     courier = Courier()
     courier.generate()
     
@@ -67,7 +34,6 @@ def courier_for_validation(courier_client):
         'password': courier.password,
         'first_name': courier.first_name
     }
-    
     # Пытаемся удалить курьера (если тест его создал)
     try:
         login_response = courier_client.login(courier.login, courier.password)
@@ -79,8 +45,7 @@ def courier_for_validation(courier_client):
 
 # Фикстура создаёт курьера перед тестом и удаляет после.
 # Возвращает данные курьера (login, password, first_name, id).
-# Используется в тестах, где нужен существующий курьер (логин, дубликат, удаление).
-#
+# Используется в тестах, где нужен СУЩЕСТВУЮЩИЙ курьер (логин, дубликат, удаление, принятие заказа).
 @pytest.fixture
 def new_courier():
     courier_client = CourierClient()
@@ -102,59 +67,68 @@ def new_courier():
         'first_name': courier.first_name,
         'id': courier_id
     }
-    
     # Удаляем курьера
     try:
         courier_client.delete(courier_id)
     except:
         pass
+
 
 
 # Фикстура создаёт курьера и сразу авторизует его.
-# Возвращает данные + id из ответа на логин.
-# Используется в тестах, где требуется авторизация.
+# Переиспользует new_courier + добавляет логин.
+# ИСПРАВЛЕНО: переиспользует new_courier вместо дублирования кода
+# new_courier уже создал курьера и вернул данные
+# Делаем логин и добавляем id к данным
+
 @pytest.fixture
-def authorized_courier():
-    courier_client = CourierClient()
-    courier = Courier()
-    courier.generate()
-    
-    courier_client.create(
-        courier.login,
-        courier.password,
-        courier.first_name
-    )
-    
-    login_response = courier_client.login(courier.login, courier.password)
+def authorized_courier(new_courier, courier_client):
+
+    login_response = courier_client.login(new_courier['login'], new_courier['password'])
     courier_id = login_response.json()["id"]
     
     yield {
-        'login': courier.login,
-        'password': courier.password,
-        'first_name': courier.first_name,
+        'login': new_courier['login'],
+        'password': new_courier['password'],
+        'first_name': new_courier['first_name'],
         'id': courier_id
     }
-    
-    # Удаляем курьера
-    try:
-        courier_client.delete(courier_id)
-    except:
-        pass
+    # new_courier сам удалит курьера
 
 
 # ФИКСТУРЫ ДЛЯ ЗАКАЗОВ
-
-
-# Возвращает экземпляр OrderClient.
-# Используется в тестах, где нужно самостоятельно управлять запросами.
 @pytest.fixture
-def order_client():
+def order_client(): # Возвращает экземпляр OrderClient.
     yield OrderClient()
+
+
+# Фикстура для тестов на СОЗДАНИЕ заказа.
+# Генерирует данные, тест создаёт заказ, фикстура удаляет
+# НЕ создаёт заказ до теста! Иначе тест не проверяет создание.
+# Нужно получить track из созданного заказа
+# Это сложно сделать без дополнительных запросов, поэтому оставляем пустым
+# Тесты на валидацию (400) не создают заказ, cleanup не нужен
+
+
+@pytest.fixture
+def order_data(order_client):
+    order = Order()
+    order.generate()
+    
+    yield {
+        'order_data': order.to_dict()
+    }
+    # Пытаемся отменить заказ (если тест его создал)
+    try:
+
+        pass
+    except:
+        pass
 
 
 # Фикстура создаёт заказ перед тестом и удаляет после.
 # Возвращает данные заказа и ответ на создание.
-# Используется в тестах на успешное создание заказа.
+# Используется в тестах, где нужен СУЩЕСТВУЮЩИЙ заказ (получение по треку, отмена).
 @pytest.fixture
 def created_order(order_client):
     order = Order()
@@ -167,7 +141,6 @@ def created_order(order_client):
         'create_response': create_response,
         'track': create_response.json()["track"]
     }
-    
     # Отменяем заказ
     try:
         order_client.cancel(create_response.json()["track"])
@@ -175,78 +148,24 @@ def created_order(order_client):
         pass
 
 
-# Фикстура для тестов на валидацию полей.
-# Генерирует данные заказа, тест создаёт его в API
+# Фикстура возвращает данные существующего заказа.
+# ИСПРАВЛЕНО: переиспользует created_order вместо дублирования кода
 @pytest.fixture
-def order_for_validation(order_client):
-    order = Order()
-    order.generate()
-    
-    order_data = order.to_dict()
-    
+def new_order(created_order):
     yield {
-        'order_data': order_data
+        'order_data': created_order['order_data'],
+        'track': created_order['track']
     }
-    
-    # Пытаемся отменить заказ (если тест его создал)
-    try:
-        # Получаем track из созданного заказа через список заказов
-        # Или просто игнорируем, если заказ не создался (400)
-        pass
-    except:
-        pass
-
-
-# Фикстура создаёт новый заказ перед тестом.
-# Возвращает данные заказа + track из ответа.
-# Используется в тестах, где нужен существующий заказ (получение по треку, отмена).
-@pytest.fixture
-def new_order():
-    order_client = OrderClient()
-    order = Order()
-    order.generate()
-    
-    create_response = order_client.create(order.to_dict())
-    track = create_response.json()["track"]
-    
-    yield {
-        'order_data': order.to_dict(),
-        'track': track
-    }
-    
-    # Отменяем заказ
-    try:
-        order_client.cancel(track)
-    except:
-        pass
 
 
 # Фикстура создаёт курьера и заказ.
-# Возвращает оба объекта для тестов accept/cancel.
-# Используется в тестах принятия/отмены заказа.
+# ИСПРАВЛЕНО: переиспользует new_courier + created_order
 @pytest.fixture
-def order_with_courier():
-    courier_client = CourierClient()
-    order_client = OrderClient()
-    
-    # Создаём курьера
-    courier = Courier()
-    courier.generate()
-    courier_client.create(
-        courier.login,
-        courier.password,
-        courier.first_name
-    )
-    
-    login_response = courier_client.login(courier.login, courier.password)
-    courier_id = login_response.json()["id"]
-    
-    # Создаём заказ
-    order = Order()
-    order.generate()
-    create_response = order_client.create(order.to_dict())
-    track = create_response.json()["track"]
-    
+def order_with_courier(new_courier, created_order, order_client):
+    # new_courier уже создал курьера
+    courier_id = new_courier['id']
+    # created_order уже создал заказ
+    track = created_order['track']
     # Получаем id заказа через трек
     get_response = order_client.get_by_track(track)
     order_id = get_response.json()["order"]["id"]
@@ -255,15 +174,7 @@ def order_with_courier():
         'courier_id': courier_id,
         'order_id': order_id,
         'track': track,
-        'login': courier.login,
-        'password': courier.password
+        'login': new_courier['login'],
+        'password': new_courier['password']
     }
-    
-    try:
-        courier_client.delete(courier_id)
-    except:
-        pass
-    try:
-        order_client.cancel(track)
-    except:
-        pass
+    # new_courier и created_order сами удалят данные
