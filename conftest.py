@@ -118,12 +118,6 @@ def order_data(order_client):
     yield {
         'order_data': order.to_dict()
     }
-    # Пытаемся отменить заказ (если тест его создал)
-    try:
-
-        pass
-    except:
-        pass
 
 
 # Фикстура создаёт заказ перед тестом и удаляет после.
